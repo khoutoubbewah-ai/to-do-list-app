@@ -1,0 +1,5 @@
+[
+  { "text": "Finish homework", "completed": false },
+  { "text": "Go to gym", "completed": false },
+  { "text": "Review class notes", "completed": true }
+]
