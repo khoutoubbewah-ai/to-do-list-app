@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple To-Do List App</title>
+  <title>Daily Quest Board</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -12,11 +12,34 @@
 <body>
   <main class="app-shell">
     <section class="todo-card">
-      <p class="eyebrow">Simple To-Do List App</p>
-      <h1>Plan your day with a calm task board</h1>
+      <p class="eyebrow">Daily Quest Board</p>
+      <div class="hero-topline">
+        <span id="dayPhase" class="phase-pill">Morning Reset</span>
+        <span id="todayLabel" class="today-label">Today</span>
+      </div>
+      <h1>Shape your day like a small story with calm, visible wins</h1>
       <p class="intro">
-        Add small goals, mark them complete, and keep your list clear and focused.
+        This planner turns everyday tasks into a gentle quest board with time, focus themes,
+        and progress that shifts as your day moves forward.
       </p>
+
+      <section class="story-panel" aria-label="Daily focus panel">
+        <div class="story-copy">
+          <p class="panel-label">Today&apos;s Scene</p>
+          <h2 id="storyLine">Build a steady rhythm by finishing one clear task at a time.</h2>
+          <p id="focusPrompt" class="panel-text">
+            Your first active task becomes the next quest to focus on.
+          </p>
+        </div>
+        <div class="progress-panel">
+          <img class="quest-illustration" src="assets/quest-board-illustration.svg" alt="A decorative illustration of a planner board, sun, moon, and progress path.">
+          <p class="panel-label">Focus Meter</p>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progressBar" class="progress-bar"></span>
+          </div>
+          <p id="progressSummary" class="panel-text">0% complete. A fresh start.</p>
+        </div>
+      </section>
 
       <div class="stats-row">
         <div class="stat-box">
@@ -27,11 +50,36 @@
           <span class="stat-label">Completed</span>
           <strong id="completedCount">0</strong>
         </div>
+        <div class="stat-box">
+          <span class="stat-label">Pending</span>
+          <strong id="pendingCount">0</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Progress</span>
+          <strong id="progressCount">0%</strong>
+        </div>
       </div>
+
+      <section class="day-board" aria-label="Choose a day for your quest board">
+        <div class="day-board-heading">
+          <p class="panel-label">Week View</p>
+          <p id="selectedDayLabel" class="panel-text">Showing tasks for Monday.</p>
+        </div>
+        <div id="daySelector" class="day-selector" role="group" aria-label="Days of the week">
+          <button type="button" class="day-btn active" data-day="Monday">Mon</button>
+          <button type="button" class="day-btn" data-day="Tuesday">Tue</button>
+          <button type="button" class="day-btn" data-day="Wednesday">Wed</button>
+          <button type="button" class="day-btn" data-day="Thursday">Thu</button>
+          <button type="button" class="day-btn" data-day="Friday">Fri</button>
+          <button type="button" class="day-btn" data-day="Saturday">Sat</button>
+          <button type="button" class="day-btn" data-day="Sunday">Sun</button>
+        </div>
+      </section>
 
       <form id="taskForm" class="task-form">
         <label for="taskInput" class="sr-only">Enter a task</label>
         <input
+          class="task-title-field"
           id="taskInput"
           name="taskInput"
           type="text"
@@ -39,10 +87,55 @@
           maxlength="80"
           required
         >
+        <label for="taskTime" class="sr-only">Choose a task time</label>
+        <input
+          id="taskTime"
+          name="taskTime"
+          type="time"
+        >
+        <label for="taskPriority" class="sr-only">Choose task priority</label>
+        <select id="taskPriority" name="taskPriority">
+          <option value="Medium">Medium Priority</option>
+          <option value="High">High Priority</option>
+          <option value="Low">Low Priority</option>
+        </select>
+        <label for="taskCategory" class="sr-only">Choose a task category</label>
+        <select id="taskCategory" name="taskCategory">
+          <option value="Creative">Creative</option>
+          <option value="Study">Study</option>
+          <option value="Wellness">Wellness</option>
+          <option value="Life">Life</option>
+        </select>
+        <label for="taskDay" class="sr-only">Choose a day</label>
+        <select id="taskDay" name="taskDay">
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Saturday">Saturday</option>
+          <option value="Sunday">Sunday</option>
+        </select>
         <button type="submit" class="primary-btn">Add Task</button>
       </form>
 
       <p id="message" class="message" aria-live="polite"></p>
+
+      <div class="toolbar" aria-label="Task controls">
+        <div class="filter-group" role="group" aria-label="Task filters">
+          <button type="button" class="filter-btn active" data-filter="all">All</button>
+          <button type="button" class="filter-btn" data-filter="active">Active</button>
+          <button type="button" class="filter-btn" data-filter="completed">Completed</button>
+        </div>
+        <button type="button" id="clearCompletedBtn" class="secondary-btn">Clear Completed</button>
+      </div>
+
+      <div class="legend-row" aria-label="Category legend">
+        <span class="legend-chip creative">Creative</span>
+        <span class="legend-chip study">Study</span>
+        <span class="legend-chip wellness">Wellness</span>
+        <span class="legend-chip life">Life</span>
+      </div>
 
       <ul id="taskList" class="task-list" aria-label="To-do tasks"></ul>
     </section>

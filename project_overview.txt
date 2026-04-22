@@ -8,7 +8,7 @@ I chose this theme because I wanted to combine a practical planner with a more c
 
 Interactive features included:
 - Dynamic DOM rendering of all task cards from JavaScript
-- Add task form with task text, time, priority, and category
+- Add task form with task text, time, priority, category, and day
 - Complete, undo, and delete controls for each task
 - Filter buttons for all, active, and completed tasks
 - Clear completed button
@@ -20,25 +20,6 @@ Interactive features included:
 
 Async operation used:
 The project uses the Fetch API with async and await to load starting task data from the local file tasks.json. The JSON is parsed and normalized before being rendered into the interface.
-
-JSON data used:
-The local tasks.json file stores an array of task objects. Each task can include:
-- text
-- completed
-- time
-- priority
-- category
-- day
-
-JavaScript features demonstrated:
-1. DOM selection and manipulation
-2. Element creation and removal
-3. Event handling for submit, click, and keyboard events
-4. Form handling and user input processing
-5. Fetch API with async and await
-6. JSON parsing and object/array handling
-7. Conditional rendering
-8. Dynamic styling and animation updates
 
 Brief notes for the grader:
 - Open the project through a local server for the fetch request to load tasks.json correctly.

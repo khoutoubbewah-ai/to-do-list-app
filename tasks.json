@@ -1,5 +1,7 @@
 [
-  { "text": "Finish homework", "completed": false },
-  { "text": "Go to gym", "completed": false },
-  { "text": "Review class notes", "completed": true }
+  { "text": "Sketch one poster idea", "completed": false, "time": "09:00", "priority": "High", "category": "Creative", "day": "Monday" },
+  { "text": "Review class notes", "completed": false, "time": "13:30", "priority": "Medium", "category": "Study", "day": "Tuesday" },
+  { "text": "Stretch and walk outside", "completed": true, "time": "18:45", "priority": "Low", "category": "Wellness", "day": "Wednesday" },
+  { "text": "Reply to one important message", "completed": false, "time": "19:15", "priority": "Medium", "category": "Life", "day": "Thursday" },
+  { "text": "Prepare mood board images", "completed": false, "time": "11:15", "priority": "Medium", "category": "Creative", "day": "Friday" }
 ]
