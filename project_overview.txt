@@ -2,6 +2,7 @@ Daily Quest Board
 
 Project concept:
 Daily Quest Board is a small interactive planner that treats everyday responsibilities like a calm story map. Instead of showing a plain to-do list, the project presents tasks as "quests" with time, category, priority, and progress feedback that changes throughout the day.
+The updated version responds to instructor feedback by adding more personal touch through saved tasks, a smart next-task recommendation, and a streak/reward system.
 
 Why this theme was chosen:
 I chose this theme because I wanted to combine a practical planner with a more creative and media-oriented presentation. The design turns routine task management into a more expressive experience by using visual storytelling language such as daily scenes, focus prompts, progress messages, and category color coding.
@@ -15,6 +16,9 @@ Interactive features included:
 - Live stat counters for total, completed, pending, and progress percent
 - Day-phase scene banner that changes based on the current time
 - Focus panel that highlights the next active task
+- Smart next-quest recommendation based on priority and time
+- localStorage persistence so tasks remain after refreshing or reopening the page
+- Reward points, badges, and a daily streak system for completed tasks
 - Animated transitions, hover effects, strike-through completion, and a live progress bar
 - Keyboard interaction: pressing Escape in the task input clears the current draft
 
@@ -24,4 +28,5 @@ The project uses the Fetch API with async and await to load starting task data f
 Brief notes for the grader:
 - Open the project through a local server for the fetch request to load tasks.json correctly.
 - If the page is opened directly from the folder with file://, the app still works by falling back to built-in sample task data.
+- Once tasks are loaded or created, the browser saves them with localStorage, so changes persist between sessions.
 - The project is designed as a calm interactive productivity/storytelling hybrid rather than a plain utility app.

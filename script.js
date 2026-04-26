@@ -20,10 +20,30 @@ const storyLine = document.getElementById("storyLine");
 const focusPrompt = document.getElementById("focusPrompt");
 const progressBar = document.getElementById("progressBar");
 const progressSummary = document.getElementById("progressSummary");
+const recommendationTitle = document.getElementById("recommendationTitle");
+const recommendationReason = document.getElementById("recommendationReason");
+const useRecommendationBtn = document.getElementById("useRecommendationBtn");
+const streakCount = document.getElementById("streakCount");
+const rewardPoints = document.getElementById("rewardPoints");
+const badgeText = document.getElementById("badgeText");
 
 let tasks = [];
 let currentFilter = "all";
 let selectedDay = "Monday";
+let currentRecommendationIndex = null;
+
+const TASK_STORAGE_KEY = "dailyQuestBoard.tasks";
+const REWARD_STORAGE_KEY = "dailyQuestBoard.rewards";
+const priorityScores = {
+  High: 3,
+  Medium: 2,
+  Low: 1
+};
+
+let rewardState = {
+  points: 0,
+  completedDates: []
+};
 
 // Fallback data helps the app still open directly from the folder
 // because some browsers block fetch requests on the file:// protocol.
@@ -53,16 +73,37 @@ const phaseScenes = {
 
 function normalizeTask(task) {
   return {
+    id: typeof task.id === "string" ? task.id : createTaskId(),
     text: typeof task.text === "string" ? task.text : "Untitled task",
     completed: Boolean(task.completed),
     time: typeof task.time === "string" ? task.time : "",
     priority: typeof task.priority === "string" ? task.priority : "Medium",
     category: typeof task.category === "string" ? task.category : "Life",
-    day: typeof task.day === "string" ? task.day : "Monday"
+    day: typeof task.day === "string" ? task.day : "Monday",
+    completedAt: typeof task.completedAt === "string" ? task.completedAt : ""
   };
 }
 
+function createTaskId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 async function loadTasks() {
+  loadRewardState();
+
+  const savedTasks = loadSavedTasks();
+
+  if (savedTasks !== null) {
+    tasks = savedTasks;
+    showMessage("Saved quests loaded from this browser.");
+    renderTasks();
+    return;
+  }
+
   try {
     const response = await fetch("tasks.json");
 
@@ -72,6 +113,7 @@ async function loadTasks() {
 
     const data = await response.json();
     tasks = Array.isArray(data) ? data.map(normalizeTask) : [];
+    saveTasks();
     showMessage("Tasks loaded from tasks.json.");
   } catch (error) {
     tasks = fallbackTasks.map(normalizeTask);
@@ -83,6 +125,7 @@ async function loadTasks() {
 
 function renderTasks() {
   taskList.innerHTML = "";
+  getSmartRecommendation();
   const visibleTasks = getVisibleTasks();
 
   if (visibleTasks.length === 0) {
@@ -99,9 +142,14 @@ function renderTasks() {
   visibleTasks.forEach(({ task, index }) => {
     const taskItem = document.createElement("li");
     taskItem.className = "task-item";
+    taskItem.dataset.taskIndex = index;
 
     if (task.completed) {
       taskItem.classList.add("completed");
+    }
+
+    if (index === currentRecommendationIndex) {
+      taskItem.classList.add("recommended");
     }
 
     const taskMain = document.createElement("div");
@@ -154,6 +202,8 @@ function renderTasks() {
 
   updateCounts();
   updateStoryPanel();
+  updateRecommendation();
+  updateRewards();
 }
 
 function getVisibleTasks() {
@@ -185,14 +235,17 @@ function addTask(taskText, timeValue, priorityValue, categoryValue, dayValue) {
   }
 
   tasks.push({
+    id: createTaskId(),
     text: trimmedText,
     completed: false,
     time: timeValue,
     priority: priorityValue,
     category: categoryValue,
-    day: dayValue
+    day: dayValue,
+    completedAt: ""
   });
 
+  saveTasks();
   renderTasks();
   showMessage(`Added: ${trimmedText} for ${dayValue}${timeValue ? ` at ${formatTime(timeValue)}` : ""}`);
   taskForm.reset();
@@ -205,18 +258,29 @@ function addTask(taskText, timeValue, priorityValue, categoryValue, dayValue) {
 function deleteTask(index) {
   const removedTask = tasks[index];
   tasks.splice(index, 1);
+  saveTasks();
   renderTasks();
   showMessage(`Deleted: ${removedTask.text}`);
 }
 
 function toggleTask(index) {
-  tasks[index].completed = !tasks[index].completed;
+  const task = tasks[index];
+  task.completed = !task.completed;
+
+  if (task.completed) {
+    task.completedAt = new Date().toISOString();
+    recordRewardForCompletion();
+  } else {
+    task.completedAt = "";
+  }
+
+  saveTasks();
   renderTasks();
 
-  if (tasks[index].completed) {
-    showMessage(`Completed: ${tasks[index].text}`);
+  if (task.completed) {
+    showMessage(`Completed: ${task.text}. Reward points updated.`);
   } else {
-    showMessage(`Marked active again: ${tasks[index].text}`);
+    showMessage(`Marked active again: ${task.text}`);
   }
 }
 
@@ -279,8 +343,10 @@ function updateStoryPanel() {
   storyLine.textContent = scene.story;
 
   if (nextTask) {
-    const timeText = nextTask.time ? ` at ${formatTime(nextTask.time)}` : "";
-    focusPrompt.textContent = `Next quest for ${selectedDay}: ${nextTask.text}${timeText} in ${nextTask.category.toLowerCase()}.`;
+    const recommendation = getSmartRecommendation();
+    const recommendedTask = recommendation ? recommendation.task : nextTask;
+    const timeText = recommendedTask.time ? ` at ${formatTime(recommendedTask.time)}` : "";
+    focusPrompt.textContent = `Next quest for ${selectedDay}: ${recommendedTask.text}${timeText} in ${recommendedTask.category.toLowerCase()}.`;
   } else if (dayTasks.length > 0) {
     focusPrompt.textContent = `All quests for ${selectedDay} are complete. The board is clear for that day.`;
   } else {
@@ -314,6 +380,156 @@ function updateDateLabel() {
   }).format(new Date());
 }
 
+function loadSavedTasks() {
+  try {
+    const savedValue = localStorage.getItem(TASK_STORAGE_KEY);
+
+    if (savedValue === null) {
+      return null;
+    }
+
+    const savedTasks = JSON.parse(savedValue);
+    return Array.isArray(savedTasks) ? savedTasks.map(normalizeTask) : [];
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveTasks() {
+  localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function loadRewardState() {
+  try {
+    const savedRewards = JSON.parse(localStorage.getItem(REWARD_STORAGE_KEY));
+
+    if (savedRewards && typeof savedRewards === "object") {
+      rewardState = {
+        points: Number(savedRewards.points) || 0,
+        completedDates: Array.isArray(savedRewards.completedDates) ? savedRewards.completedDates : []
+      };
+    }
+  } catch (error) {
+    rewardState = {
+      points: 0,
+      completedDates: []
+    };
+  }
+}
+
+function saveRewardState() {
+  localStorage.setItem(REWARD_STORAGE_KEY, JSON.stringify(rewardState));
+}
+
+function recordRewardForCompletion() {
+  const today = getDateKey(new Date());
+
+  rewardState.points += 10;
+
+  if (!rewardState.completedDates.includes(today)) {
+    rewardState.completedDates.push(today);
+  }
+
+  saveRewardState();
+}
+
+function getDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getCurrentStreak() {
+  const completedDates = new Set(rewardState.completedDates);
+  let cursor = new Date();
+  let streak = 0;
+
+  while (completedDates.has(getDateKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+
+function updateRewards() {
+  const streak = getCurrentStreak();
+  const totalCompleted = tasks.filter((task) => task.completed).length;
+
+  streakCount.textContent = streak;
+  rewardPoints.textContent = rewardState.points;
+  badgeText.textContent = getBadgeText(totalCompleted, streak);
+}
+
+function getBadgeText(totalCompleted, streak) {
+  if (streak >= 5) {
+    return "Badge unlocked: Week Builder. Your quest habit is becoming consistent.";
+  }
+
+  if (totalCompleted >= 10) {
+    return "Badge unlocked: Quest Finisher. Ten tasks are complete.";
+  }
+
+  if (rewardState.points >= 30) {
+    return "Badge unlocked: Momentum Maker. Keep stacking small wins.";
+  }
+
+  if (totalCompleted > 0) {
+    return "First badge earned: Day Starter. Complete more quests to unlock rewards.";
+  }
+
+  return "Complete a quest to earn your first badge.";
+}
+
+function getSmartRecommendation() {
+  const activeTasks = tasks
+    .map((task, index) => ({ task, index }))
+    .filter(({ task }) => task.day === selectedDay && !task.completed);
+
+  if (activeTasks.length === 0) {
+    currentRecommendationIndex = null;
+    return null;
+  }
+
+  const [recommended] = activeTasks.sort((a, b) => {
+    const priorityDifference = priorityScores[b.task.priority] - priorityScores[a.task.priority];
+
+    if (priorityDifference !== 0) {
+      return priorityDifference;
+    }
+
+    return getTaskMinutes(a.task.time) - getTaskMinutes(b.task.time);
+  });
+
+  currentRecommendationIndex = recommended.index;
+  return recommended;
+}
+
+function getTaskMinutes(timeValue) {
+  if (!timeValue) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const [hourText, minuteText] = timeValue.split(":");
+  return (Number(hourText) * 60) + Number(minuteText);
+}
+
+function updateRecommendation() {
+  const recommendation = getSmartRecommendation();
+
+  if (!recommendation) {
+    recommendationTitle.textContent = `No active quests for ${selectedDay}`;
+    recommendationReason.textContent = "Add a new task or switch to another day to get a smart recommendation.";
+    useRecommendationBtn.disabled = true;
+    return;
+  }
+
+  const { task } = recommendation;
+  const timeText = task.time ? ` at ${formatTime(task.time)}` : "";
+
+  recommendationTitle.textContent = task.text;
+  recommendationReason.textContent = `${task.priority} priority ${task.category.toLowerCase()} quest${timeText}. Suggested because higher-priority and earlier tasks come first.`;
+  useRecommendationBtn.disabled = false;
+}
+
 taskForm.addEventListener("submit", (event) => {
   event.preventDefault();
   addTask(taskInput.value, taskTime.value, taskPriority.value, taskCategory.value, taskDay.value);
@@ -332,6 +548,7 @@ taskInput.addEventListener("keydown", (event) => {
 clearCompletedBtn.addEventListener("click", () => {
   const beforeCount = tasks.length;
   tasks = tasks.filter((task) => !task.completed);
+  saveTasks();
   renderTasks();
 
   if (beforeCount === tasks.length) {
@@ -340,6 +557,30 @@ clearCompletedBtn.addEventListener("click", () => {
   }
 
   showMessage("Cleared completed tasks.");
+});
+
+useRecommendationBtn.addEventListener("click", () => {
+  if (currentRecommendationIndex === null) {
+    return;
+  }
+
+  currentFilter = "all";
+
+  filterButtons.forEach((filterButton) => {
+    filterButton.classList.toggle("active", filterButton.dataset.filter === "all");
+  });
+
+  renderTasks();
+
+  const recommendedTask = document.querySelector(`[data-task-index="${currentRecommendationIndex}"]`);
+
+  if (recommendedTask) {
+    recommendedTask.scrollIntoView({ behavior: "smooth", block: "center" });
+    recommendedTask.classList.add("pulse-focus");
+    setTimeout(() => recommendedTask.classList.remove("pulse-focus"), 900);
+  }
+
+  showMessage("Smart recommendation highlighted.");
 });
 
 dayButtons.forEach((button) => {

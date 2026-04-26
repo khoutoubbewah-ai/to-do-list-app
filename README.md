@@ -19,6 +19,9 @@ Daily Quest Board is a beginner-friendly JavaScript mini project that turns a to
 - Async task loading with `fetch()` and `async/await`
 - JSON data from a local file
 - Progress tracking, filtering, and day selection
+- Smart next-task recommendation based on priority and time
+- Persistent tasks with `localStorage`
+- Reward points, badges, and daily streak tracking
 - Animated UI with a clear visual theme
 
 ## Run
